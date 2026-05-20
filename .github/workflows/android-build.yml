@@ -1,0 +1,780 @@
+name: Build Nexus Assistente Virtual APK
+
+on:
+  push:
+    branches:
+      - main
+      - principal
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-debug-apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Configurar Gradle sem cache instável
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.4"
+          cache-disabled: true
+
+      - name: Gerar projeto Android limpo
+        run: |
+          set -e
+          rm -rf generated-android
+          mkdir -p generated-android/app/src/main/java/com/jardeltecnologia/nexusredevilela
+          mkdir -p generated-android/app/src/main/res/values
+          mkdir -p generated-android/app/src/main/res/raw
+          mkdir -p generated-android/app/src/main/res/mipmap-mdpi
+          mkdir -p generated-android/app/src/main/res/mipmap-hdpi
+          mkdir -p generated-android/app/src/main/res/mipmap-xhdpi
+          mkdir -p generated-android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p generated-android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p generated-android/app/src/main/assets
+
+          cp app_assets/icons/mipmap-mdpi/ic_launcher.png generated-android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp app_assets/icons/mipmap-mdpi/ic_launcher_round.png generated-android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          cp app_assets/icons/mipmap-hdpi/ic_launcher.png generated-android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp app_assets/icons/mipmap-hdpi/ic_launcher_round.png generated-android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          cp app_assets/icons/mipmap-xhdpi/ic_launcher.png generated-android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp app_assets/icons/mipmap-xhdpi/ic_launcher_round.png generated-android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          cp app_assets/icons/mipmap-xxhdpi/ic_launcher.png generated-android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp app_assets/icons/mipmap-xxhdpi/ic_launcher_round.png generated-android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          cp app_assets/icons/mipmap-xxxhdpi/ic_launcher.png generated-android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          cp app_assets/icons/mipmap-xxxhdpi/ic_launcher_round.png generated-android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+
+          if [ -f "app_assets/raw/nexus_intro.mp4" ]; then
+            cp app_assets/raw/nexus_intro.mp4 generated-android/app/src/main/res/raw/nexus_intro.mp4
+          fi
+
+          cat > generated-android/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = 'NexusAssistenteVirtualAPK'
+          include ':app'
+          EOF
+
+          cat > generated-android/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+          }
+          EOF
+
+          cat > generated-android/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat > generated-android/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.jardeltecnologia.nexusredevilela'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.jardeltecnologia.nexusredevilela'
+                  minSdk 23
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0.0'
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
+
+          cat > generated-android/app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Nexus Assistente Virtual</string>
+          </resources>
+          EOF
+
+          cat > generated-android/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="android:windowActionBar">false</item>
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:statusBarColor">#020617</item>
+                  <item name="android:navigationBarColor">#020617</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:windowLightNavigationBar">false</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > generated-android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+              <application
+                  android:allowBackup="true"
+                  android:hardwareAccelerated="true"
+                  android:usesCleartextTraffic="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true"
+                  android:theme="@style/AppTheme">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > generated-android/app/src/main/assets/nexus_bridge.js <<'EOF'
+          (function(){
+            if(window.__NEXUS_REDE_VILELA_APK__) return;
+            window.__NEXUS_REDE_VILELA_APK__ = true;
+
+            try {
+              localStorage.setItem('nexus_app_mode','1');
+              localStorage.setItem('rede_vilela_apk','1');
+              localStorage.setItem('no_install_prompt','1');
+              sessionStorage.setItem('nexus_app_mode','1');
+            } catch(e){}
+
+            window.addEventListener('beforeinstallprompt', function(e){
+              try{ e.preventDefault(); }catch(x){}
+              return false;
+            }, true);
+
+            function ensureViewport(){
+              var m = document.querySelector('meta[name="viewport"]');
+              if(!m){
+                m = document.createElement('meta');
+                m.setAttribute('name','viewport');
+                document.head.appendChild(m);
+              }
+              m.setAttribute('content','width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover');
+            }
+
+            function inject(){
+              ensureViewport();
+              if(document.getElementById('nexus-apk-style')) return;
+              var s = document.createElement('style');
+              s.id = 'nexus-apk-style';
+              s.innerHTML = [
+                'html,body{background:#020617!important;margin:0!important;padding:0!important;width:100%!important;max-width:100%!important;overflow-x:hidden!important;overscroll-behavior:none!important;}',
+                'body{font-family:Arial,Helvetica,sans-serif!important;}',
+                '::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}',
+                'img,video,iframe,embed,object{max-width:100%!important;}',
+                'video{background:#000!important;object-fit:contain!important;}',
+                '.pwa-install,.install-app,.install-button,.pwa-banner,.a2hs,.add-to-home,.add-to-home-screen,[id*="install" i],[class*="install" i],[id*="pwa" i],[class*="pwa" i],[id*="a2hs" i],[class*="a2hs" i]{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}',
+                '.container,.wrapper,.content,.main,.post,.post-body,.widget,.section,.Blog,.blog-posts,.main-wrapper,.content-wrapper,#main,#content,#page,.page,.outer-wrapper{max-width:100%!important;box-sizing:border-box!important;}',
+                '@media(max-width:768px){.sidebar,.sidebar-wrapper,.right-sidebar,.left-sidebar,#sidebar,#sidebar-wrapper,aside,.desktop-only{display:none!important}.post,.post-body,.entry-content{padding-left:8px!important;padding-right:8px!important}iframe{width:100%!important;min-height:220px!important}}'
+              ].join('');
+              document.head.appendChild(s);
+            }
+
+            function tuneMedia(){
+              try{
+                document.querySelectorAll('video').forEach(function(v){
+                  v.preload = 'metadata';
+                  v.playsInline = true;
+                  v.setAttribute('playsinline','');
+                  v.setAttribute('webkit-playsinline','');
+                });
+              }catch(e){}
+            }
+
+            function run(){ inject(); tuneMedia(); }
+            if(document.readyState === 'loading'){
+              document.addEventListener('DOMContentLoaded', run, {once:true});
+            }
+            run();
+            setTimeout(run, 600);
+            setTimeout(run, 1800);
+          })();
+          EOF
+
+          cat > generated-android/app/src/main/java/com/jardeltecnologia/nexusredevilela/MainActivity.java <<'EOF'
+          package com.jardeltecnologia.nexusredevilela;
+
+          import android.Manifest;
+          import android.annotation.SuppressLint;
+          import android.app.Activity;
+          import android.content.ActivityNotFoundException;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.graphics.Bitmap;
+          import android.graphics.Color;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.provider.Settings;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.view.ViewGroup;
+          import android.view.Window;
+          import android.webkit.CookieManager;
+          import android.webkit.JsResult;
+          import android.webkit.PermissionRequest;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceError;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Button;
+          import android.widget.FrameLayout;
+          import android.widget.LinearLayout;
+          import android.widget.ProgressBar;
+          import android.widget.TextView;
+          import android.widget.VideoView;
+
+          import java.io.ByteArrayInputStream;
+          import java.io.ByteArrayOutputStream;
+          import java.io.InputStream;
+          import java.nio.charset.StandardCharsets;
+
+          public class MainActivity extends Activity {
+              private static final String HOME_URL = "https://www.redevilela.com/?app=nexus-assistente-apk&apk=1&mobile=1&utm_source=nexus_assistente_apk";
+              private static final String NEXUS_URL = "https://www.redevilela.com/?app=nexus-assistente-apk&apk=1&mobile=1&utm_source=nexus_assistente_apk";
+              private static final String SEARCH_URL = "https://www.redevilela.com/?app=nexus-assistente-apk&apk=1&mobile=1&utm_source=nexus_assistente_apk&q=";
+              private static final String LIVE_URL = "https://www.redevilela.com/?app=nexus-assistente-apk&apk=1&mobile=1&utm_source=nexus_assistente_apk";
+              private static final String VIDEOS_URL = "https://www.redevilela.com/?app=nexus-assistente-apk&apk=1&mobile=1&utm_source=nexus_assistente_apk";
+              private static final String MOBILE_UA =
+                      "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 "
+                              + "(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 NexusAssistenteVirtual/1.0";
+
+              private FrameLayout root;
+              private WebView webView;
+              private ProgressBar progressBar;
+              private LinearLayout offlinePanel;
+              private LinearLayout bottomBar;
+              private FrameLayout splashLayer;
+              private View customView;
+              private WebChromeClient.CustomViewCallback customViewCallback;
+              private String bridgeScript = "";
+              private final Handler handler = new Handler(Looper.getMainLooper());
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  Window window = getWindow();
+                  window.setStatusBarColor(Color.parseColor("#020617"));
+                  window.setNavigationBarColor(Color.parseColor("#020617"));
+
+                  bridgeScript = loadAssetText("nexus_bridge.js");
+                  buildLayout();
+                  configureWebView();
+
+                  if (Build.VERSION.SDK_INT >= 23 &&
+                          checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                      requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 5001);
+                  }
+
+                  if (savedInstanceState != null) {
+                      webView.restoreState(savedInstanceState);
+                  } else {
+                      webView.loadUrl(HOME_URL);
+                  }
+
+                  showSplash();
+              }
+
+              private void buildLayout() {
+                  root = new FrameLayout(this);
+                  root.setBackgroundColor(Color.parseColor("#020617"));
+
+                  LinearLayout main = new LinearLayout(this);
+                  main.setOrientation(LinearLayout.VERTICAL);
+                  main.setBackgroundColor(Color.parseColor("#020617"));
+
+                  webView = new WebView(this);
+                  webView.setBackgroundColor(Color.parseColor("#020617"));
+                  main.addView(webView, new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          0,
+                          1f
+                  ));
+
+                  bottomBar = createBottomBar();
+                  main.addView(bottomBar, new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          dp(58)
+                  ));
+
+                  root.addView(main, new FrameLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.MATCH_PARENT
+                  ));
+
+                  progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                  progressBar.setMax(100);
+                  progressBar.setProgress(0);
+                  FrameLayout.LayoutParams progressParams = new FrameLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          dp(3)
+                  );
+                  progressParams.gravity = Gravity.TOP;
+                  root.addView(progressBar, progressParams);
+
+                  offlinePanel = createOfflinePanel();
+                  offlinePanel.setVisibility(View.GONE);
+                  FrameLayout.LayoutParams offlineParams = new FrameLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.WRAP_CONTENT
+                  );
+                  offlineParams.gravity = Gravity.CENTER;
+                  offlineParams.leftMargin = dp(22);
+                  offlineParams.rightMargin = dp(22);
+                  root.addView(offlinePanel, offlineParams);
+
+                  splashLayer = createSplashLayer();
+                  root.addView(splashLayer, new FrameLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.MATCH_PARENT
+                  ));
+
+                  setContentView(root);
+              }
+
+              private LinearLayout createBottomBar() {
+                  LinearLayout bar = new LinearLayout(this);
+                  bar.setOrientation(LinearLayout.HORIZONTAL);
+                  bar.setGravity(Gravity.CENTER);
+                  bar.setPadding(dp(6), dp(5), dp(6), dp(5));
+                  bar.setBackgroundColor(Color.parseColor("#06111f"));
+
+                  bar.addView(navButton("Assistente", v -> webView.loadUrl(HOME_URL)), navParams());
+                  bar.addView(navButton("Microfone", v -> webView.loadUrl(NEXUS_URL)), navParams());
+                  bar.addView(navButton("Recarregar", v -> webView.reload()), navParams());
+
+                  return bar;
+              }
+
+              private LinearLayout.LayoutParams navParams() {
+                  return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+              }
+
+              private Button navButton(String text, View.OnClickListener listener) {
+                  Button btn = new Button(this);
+                  btn.setText(text);
+                  btn.setTextSize(12);
+                  btn.setAllCaps(false);
+                  btn.setTextColor(Color.WHITE);
+                  btn.setBackgroundColor(Color.TRANSPARENT);
+                  btn.setOnClickListener(listener);
+                  return btn;
+              }
+
+              private LinearLayout createOfflinePanel() {
+                  LinearLayout panel = new LinearLayout(this);
+                  panel.setOrientation(LinearLayout.VERTICAL);
+                  panel.setGravity(Gravity.CENTER);
+                  panel.setPadding(dp(18), dp(18), dp(18), dp(18));
+                  panel.setBackgroundColor(Color.parseColor("#111827"));
+
+                  TextView title = new TextView(this);
+                  title.setText("Nexus Assistente");
+                  title.setTextColor(Color.WHITE);
+                  title.setTextSize(23);
+                  title.setGravity(Gravity.CENTER);
+                  title.setTypeface(null, 1);
+                  panel.addView(title);
+
+                  TextView msg = new TextView(this);
+                  msg.setText("Não foi possível carregar agora. Verifique a internet e tente novamente.");
+                  msg.setTextColor(0xFFD1D5DB);
+                  msg.setTextSize(15);
+                  msg.setGravity(Gravity.CENTER);
+                  msg.setPadding(0, dp(10), 0, dp(12));
+                  panel.addView(msg);
+
+                  Button retry = new Button(this);
+                  retry.setText("Tentar novamente");
+                  retry.setAllCaps(false);
+                  retry.setTextColor(Color.WHITE);
+                  retry.setBackgroundColor(Color.parseColor("#0EA5E9"));
+                  retry.setOnClickListener(v -> {
+                      offlinePanel.setVisibility(View.GONE);
+                      webView.loadUrl(HOME_URL);
+                  });
+                  panel.addView(retry, new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          dp(48)
+                  ));
+
+                  return panel;
+              }
+
+              private FrameLayout createSplashLayer() {
+                  FrameLayout splash = new FrameLayout(this);
+                  splash.setBackgroundColor(Color.parseColor("#020617"));
+
+                  LinearLayout box = new LinearLayout(this);
+                  box.setOrientation(LinearLayout.VERTICAL);
+                  box.setGravity(Gravity.CENTER);
+                  box.setPadding(dp(24), dp(24), dp(24), dp(24));
+
+                  VideoView video = new VideoView(this);
+                  try {
+                      Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.nexus_intro);
+                      video.setVideoURI(videoUri);
+                      video.setOnPreparedListener(mp -> {
+                          mp.setLooping(true);
+                          mp.setVolume(0f, 0f);
+                          video.start();
+                      });
+                  } catch (Exception ignored) {}
+
+                  box.addView(video, new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          dp(230)
+                  ));
+
+                  TextView title = new TextView(this);
+                  title.setText("NEXUS");
+                  title.setTextColor(Color.WHITE);
+                  title.setTextSize(34);
+                  title.setGravity(Gravity.CENTER);
+                  title.setTypeface(null, 1);
+                  title.setPadding(0, dp(18), 0, 0);
+                  box.addView(title);
+
+                  TextView sub = new TextView(this);
+                  sub.setText("Assistente Virtual em www.redevilela.com");
+                  sub.setTextColor(0xFF7DD3FC);
+                  sub.setTextSize(16);
+                  sub.setGravity(Gravity.CENTER);
+                  box.addView(sub);
+
+                  splash.addView(box, new FrameLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.MATCH_PARENT
+                  ));
+
+                  return splash;
+              }
+
+              private void showSplash() {
+                  splashLayer.setVisibility(View.VISIBLE);
+                  handler.postDelayed(() -> splashLayer.setVisibility(View.GONE), 3200);
+              }
+
+              @SuppressLint("SetJavaScriptEnabled")
+              private void configureWebView() {
+                  WebSettings s = webView.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setDatabaseEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  s.setLoadsImagesAutomatically(true);
+                  s.setUseWideViewPort(true);
+                  s.setLoadWithOverviewMode(true);
+                  s.setSupportZoom(false);
+                  s.setBuiltInZoomControls(false);
+                  s.setDisplayZoomControls(false);
+                  s.setCacheMode(WebSettings.LOAD_DEFAULT);
+                  s.setAllowFileAccess(false);
+                  s.setAllowContentAccess(false);
+                  s.setUserAgentString(MOBILE_UA);
+
+                  if (Build.VERSION.SDK_INT >= 21) {
+                      s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                      CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+                  }
+
+                  if (Build.VERSION.SDK_INT >= 23) {
+                      s.setOffscreenPreRaster(true);
+                  }
+
+                  CookieManager.getInstance().setAcceptCookie(true);
+                  webView.setVerticalScrollBarEnabled(false);
+                  webView.setHorizontalScrollBarEnabled(false);
+                  webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                  webView.setWebViewClient(new NexusClient());
+                  webView.setWebChromeClient(new NexusChrome());
+              }
+
+              private class NexusClient extends WebViewClient {
+                  @Override
+                  public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                      offlinePanel.setVisibility(View.GONE);
+                      progressBar.setVisibility(View.VISIBLE);
+                      progressBar.setProgress(8);
+                  }
+
+                  @Override
+                  public void onPageFinished(WebView view, String url) {
+                      progressBar.setVisibility(View.GONE);
+                      injectBridge();
+                  }
+
+                  @Override
+                  public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                      if (Build.VERSION.SDK_INT >= 23 && request != null && request.isForMainFrame()) {
+                          offlinePanel.setVisibility(View.VISIBLE);
+                      }
+                  }
+
+                  @Override
+                  public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                      if (request != null && request.getUrl() != null) {
+                          String url = request.getUrl().toString().toLowerCase();
+                          if (shouldBlock(url)) {
+                              return new WebResourceResponse(
+                                      "text/plain",
+                                      "utf-8",
+                                      new ByteArrayInputStream(new byte[0])
+                              );
+                          }
+                      }
+                      return super.shouldInterceptRequest(view, request);
+                  }
+
+                  private boolean shouldBlock(String url) {
+                      return url.contains("doubleclick.net")
+                              || url.contains("googlesyndication.com")
+                              || url.contains("google-analytics.com")
+                              || url.contains("googletagmanager.com")
+                              || url.contains("facebook.com/tr")
+                              || url.contains("connect.facebook.net")
+                              || url.contains("hotjar.com")
+                              || url.contains("clarity.ms")
+                              || url.contains("taboola.com")
+                              || url.contains("outbrain.com")
+                              || url.contains("pagead/")
+                              || url.contains("adsbygoogle");
+                  }
+
+                  @Override
+                  public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                      return handleUrl(url);
+                  }
+
+                  @Override
+                  public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                      return handleUrl(request.getUrl().toString());
+                  }
+
+                  private boolean handleUrl(String url) {
+                      if (url == null) return false;
+                      Uri uri = Uri.parse(url);
+                      String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
+                      if ("http".equals(scheme) || "https".equals(scheme)) return false;
+                      try {
+                          startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                      } catch (ActivityNotFoundException ignored) {}
+                      return true;
+                  }
+              }
+
+              private class NexusChrome extends WebChromeClient {
+                  @Override
+                  public void onProgressChanged(WebView view, int newProgress) {
+                      progressBar.setProgress(newProgress);
+                      progressBar.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
+                      if (newProgress >= 45) injectBridge();
+                  }
+
+                  @Override
+                  public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                      result.confirm();
+                      return true;
+                  }
+
+                  @Override
+                  public void onPermissionRequest(final PermissionRequest request) {
+                      if (Build.VERSION.SDK_INT >= 21) {
+                          request.grant(request.getResources());
+                      }
+                  }
+
+                  @Override
+                  public void onShowCustomView(View view, CustomViewCallback callback) {
+                      if (customView != null) {
+                          callback.onCustomViewHidden();
+                          return;
+                      }
+                      customView = view;
+                      customViewCallback = callback;
+                      webView.setVisibility(View.GONE);
+                      bottomBar.setVisibility(View.GONE);
+                      root.addView(customView, new FrameLayout.LayoutParams(
+                              ViewGroup.LayoutParams.MATCH_PARENT,
+                              ViewGroup.LayoutParams.MATCH_PARENT
+                      ));
+                  }
+
+                  @Override
+                  public void onHideCustomView() {
+                      hideCustomView();
+                  }
+              }
+
+              private void hideCustomView() {
+                  if (customView == null) return;
+                  root.removeView(customView);
+                  customView = null;
+                  webView.setVisibility(View.VISIBLE);
+                  bottomBar.setVisibility(View.VISIBLE);
+                  if (customViewCallback != null) {
+                      customViewCallback.onCustomViewHidden();
+                      customViewCallback = null;
+                  }
+              }
+
+              private String loadAssetText(String name) {
+                  try {
+                      InputStream input = getAssets().open(name);
+                      ByteArrayOutputStream output = new ByteArrayOutputStream();
+                      byte[] buffer = new byte[4096];
+                      int read;
+                      while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+                      input.close();
+                      return new String(output.toByteArray(), StandardCharsets.UTF_8);
+                  } catch (Exception e) {
+                      return "";
+                  }
+              }
+
+              private void injectBridge() {
+                  if (bridgeScript != null && !bridgeScript.isEmpty()) {
+                      webView.evaluateJavascript(bridgeScript, null);
+                  }
+              }
+
+              private int dp(int value) {
+                  return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (customView != null) {
+                      hideCustomView();
+                  } else if (webView != null && webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+
+              @Override
+              protected void onPause() {
+                  if (webView != null) {
+                      webView.onPause();
+                      webView.pauseTimers();
+                  }
+                  super.onPause();
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  if (webView != null) {
+                      webView.resumeTimers();
+                      webView.onResume();
+                  }
+              }
+
+              @Override
+              protected void onSaveInstanceState(Bundle outState) {
+                  super.onSaveInstanceState(outState);
+                  if (webView != null) webView.saveState(outState);
+              }
+
+              @Override
+              protected void onDestroy() {
+                  if (webView != null) {
+                      try {
+                          webView.loadUrl("about:blank");
+                          webView.stopLoading();
+                          webView.setWebChromeClient(null);
+                          webView.setWebViewClient(null);
+                          webView.destroy();
+                      } catch (Exception ignored) {}
+                  }
+                  handler.removeCallbacksAndMessages(null);
+                  super.onDestroy();
+              }
+          }
+          EOF
+
+          echo "Projeto Android gerado:"
+          find generated-android -maxdepth 6 -type f | sort
+
+      - name: Gerar APK debug
+        run: |
+          cd generated-android
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Listar APK gerado
+        run: |
+          find generated-android -type f -name "*.apk" -print
+
+      - name: Preparar artifact
+        run: |
+          mkdir -p artifacts
+          cp generated-android/app/build/outputs/apk/debug/*.apk artifacts/
+          ls -la artifacts
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nexus-Assistente-Virtual-debug-apk
+          path: artifacts/*.apk
+          if-no-files-found: error

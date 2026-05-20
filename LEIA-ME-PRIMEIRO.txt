@@ -1,0 +1,48 @@
+NEXUS ASSISTENTE VIRTUAL — APK CORRETO
+
+Correção importante:
+Este APK NÃO é o app do portal de notícias www.redevilela.com.br.
+Este APK é exclusivamente do assistente virtual em:
+
+https://www.redevilela.com/
+
+O que foi corrigido:
+1. URL principal do app aponta somente para www.redevilela.com.
+2. Removidos botões nativos de portal/notícias.
+3. Barra inferior agora tem apenas:
+   - Assistente
+   - Microfone
+   - Recarregar
+4. Permissão de microfone mantida para o assistente virtual.
+5. Ícone premium Nexus mantido.
+6. Vídeo de abertura mantido.
+7. Workflow do GitHub Actions continua usando a estratégia estável.
+8. Repositório fixo no script:
+   https://github.com/jardeltecnologia-sys/nexus-rede-vilela-apk.git
+
+COMO ENVIAR:
+
+1. Crie ou use o repositório:
+   nexus-rede-vilela-apk
+
+2. Extraia este ZIP.
+
+3. Entre na pasta:
+   nexus-rede-vilela-apk
+
+4. Na barra de endereço, digite:
+   powershell
+
+5. Rode:
+   powershell -ExecutionPolicy Bypass -File .\ENVIAR_PARA_GITHUB.ps1
+
+6. Abra:
+   https://github.com/jardeltecnologia-sys/nexus-rede-vilela-apk/actions
+
+7. Aguarde ficar verde.
+
+8. Baixe o artifact:
+   Nexus-Assistente-Virtual-debug-apk
+
+9. Extraia e instale:
+   app-debug.apk
